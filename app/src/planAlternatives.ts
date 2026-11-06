@@ -134,19 +134,14 @@ export function isChoosable(plan: CarePlan): boolean {
 }
 
 /**
- * The CarePlans to update when the patient chooses one alternative: the chosen one gets
- * intent `plan`, every other draft alternative with intent `plan` goes back to `option`.
- * Plans already past draft (active, completed) are left as they are.
+ * The CarePlans to write when the patient chooses one alternative: every draft alternative,
+ * the chosen one with intent `plan`, the others with intent `option`. Writing all of them,
+ * each guarded by its version, makes two concurrent choices conflict instead of leaving two
+ * chosen plans. Plans already past draft (active, completed) are left as they are.
  */
 export function chooseAlternative(plans: CarePlan[], chosenId: string): CarePlan[] {
   const chosen = plans.find((p) => p.id === chosenId)
   if (!chosen) throw new Error(`CarePlan/${chosenId} is not one of the patient's plans`)
   if (!isChoosable(chosen)) throw new Error(`CarePlan/${chosenId} has status ${chosen.status}; only a draft alternative can be chosen`)
-  const changed: CarePlan[] = []
-  for (const plan of plans) {
-    if (!isChoosable(plan)) continue
-    const intent = plan.id === chosenId ? 'plan' : plan.intent === 'plan' ? 'option' : plan.intent
-    if (intent !== plan.intent) changed.push({ ...plan, intent })
-  }
-  return changed
+  return plans.filter(isChoosable).map((plan) => ({ ...plan, intent: plan.id === chosenId ? 'plan' : 'option' }))
 }

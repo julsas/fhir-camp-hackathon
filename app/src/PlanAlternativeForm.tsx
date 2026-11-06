@@ -9,7 +9,7 @@ function today(): string {
 }
 
 /** Creates a new treatment alternative (CarePlan, intent option) from a gap in the chart. */
-export function PlanAlternativeForm({ record, onCreated }: { record: PatientRecord; onCreated: (carePlan: CarePlan) => void }) {
+export function PlanAlternativeForm({ record, onCreated }: { record: PatientRecord; onCreated: (carePlan: CarePlan) => Promise<void> }) {
   const gaps = useMemo(() => findGaps(record.toothStates, record.conditions), [record])
   const [tooth, setTooth] = useState<string>()
   const [templateKey, setTemplateKey] = useState(ALTERNATIVE_TEMPLATES[0]?.key)
@@ -26,7 +26,8 @@ export function PlanAlternativeForm({ record, onCreated }: { record: PatientReco
     setError(undefined)
     try {
       const created = await create<CarePlan>(buildAlternative({ patient: record.patient, gap, template, existing: record.carePlans, today: today() }))
-      onCreated(created)
+      // Keep the form busy until the list shows the new plan, so the next one gets the next letter.
+      await onCreated(created)
     } catch (e) {
       setError((e as Error).message)
     } finally {

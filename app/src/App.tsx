@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { display, loadPatientRecord, patientName, search, toothOf, updateAll, type CarePlan, type Patient, type PatientRecord } from './fhir'
 import { toChartStatus, toPlanChart } from './odontogram/chartAdapter'
 import { OdontogramView } from './odontogram/OdontogramView'
@@ -13,6 +13,9 @@ export function App() {
   const [record, setRecord] = useState<PatientRecord>()
   const [planId, setPlanId] = useState<string>()
   const [error, setError] = useState<string>()
+  // The patient on screen now: a reload started for another patient must not overwrite it.
+  const shownPatientId = useRef<string>(undefined)
+  shownPatientId.current = patientId
 
   useEffect(() => {
     search<Patient>(`Patient?identifier=${encodeURIComponent(`${DENTAL_PATIENT}|`)}&_sort=_id&_count=50`)
@@ -36,8 +39,10 @@ export function App() {
   // Reload the record after a write, keeping the patient, and select a plan if given.
   async function refresh(selectPlanId?: string) {
     if (!record) return
+    const patientIdAtStart = record.patient.id
     try {
       const loaded = await loadPatientRecord(record.patient)
+      if (shownPatientId.current !== patientIdAtStart) return
       setRecord(loaded)
       if (selectPlanId) setPlanId(selectPlanId)
     } catch (e) {
@@ -110,7 +115,7 @@ export function App() {
                 <PlanCard key={carePlan.id} carePlan={carePlan} record={record} selected={carePlan.id === planId} onSelect={() => setPlanId(carePlan.id)} onChoose={() => void choose(carePlan.id)} />
               ))}
             </div>
-            <PlanAlternativeForm record={record} onCreated={(carePlan) => void refresh(carePlan.id)} />
+            <PlanAlternativeForm record={record} onCreated={(carePlan) => refresh(carePlan.id)} />
             </div>
           </section>
         </>
