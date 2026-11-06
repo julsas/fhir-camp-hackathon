@@ -36,7 +36,7 @@ export function PlanAlternativeForm({ record, onCreated }: { record: PatientReco
   }
 
   return (
-    <form className="new-plan" onSubmit={(e) => { e.preventDefault(); void submit() }}>
+    <form className="app-new-plan" onSubmit={(e) => { e.preventDefault(); void submit() }}>
       <h3>Neue Alternative</h3>
       <label>
         Befund{' '}

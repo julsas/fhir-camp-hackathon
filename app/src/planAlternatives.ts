@@ -107,6 +107,9 @@ export function buildAlternative(input: {
   const { patient, gap, template, existing, today } = input
   const identifier = nextIdentifier(patient, existing, today)
   const evidence = gap.condition?.evidence?.flatMap((e) => e.detail ?? []) ?? []
+  // The alternatives of one finding share the planned start (it dates the cost plan, see
+  // billing/charges-from-plan.mjs); without a sibling alternative the plan starts today.
+  const sibling = existing.find((p) => p.period?.start && gap.condition && p.addresses?.some((r) => r.reference === `Condition/${gap.condition?.id}`))
   return {
     resourceType: 'CarePlan',
     meta: { profile: [DENTAL_CARE_PLAN_PROFILE], tag: [HTEST] },
@@ -120,6 +123,7 @@ export function buildAlternative(input: {
     title: `HKP Alternative ${identifier.letter}: ${template.title(gap)}`,
     description: template.description(gap),
     subject: { reference: `Patient/${patient.id}` },
+    period: { start: sibling?.period?.start ?? today },
     created: today,
     author: DENTIST,
     ...(gap.condition ? { addresses: [{ reference: `Condition/${gap.condition.id}` }] } : {}),

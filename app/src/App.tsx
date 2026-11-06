@@ -146,9 +146,9 @@ function PlanCard({ carePlan, record, selected, onSelect, onChoose }: { carePlan
         {charges.length > 0 && <>, {charges.length} planned ChargeItems</>}
       </div>
       {carePlan.intent === 'plan' ? (
-        <div className="chosen">Gewählt</div>
+        <div className="app-plan-chosen">Gewählt</div>
       ) : isChoosable(carePlan) && (
-        <button type="button" className="choose" onClick={onChoose}>Diese Alternative wählen</button>
+        <button type="button" className="app-plan-choose" onClick={onChoose}>Diese Alternative wählen</button>
       )}
       {selected && charges.length > 0 && (
         <table>
