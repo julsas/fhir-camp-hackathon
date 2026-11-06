@@ -13,7 +13,9 @@ export function App() {
   const [record, setRecord] = useState<PatientRecord>()
   const [planId, setPlanId] = useState<string>()
   const [error, setError] = useState<string>()
-  // The patient on screen now: a reload started for another patient must not overwrite it.
+  // Every record load gets a number; only the newest one may set the record, so a slow reload
+  // cannot overwrite a newer one or the record of a patient selected in between.
+  const loadGeneration = useRef(0)
   const shownPatientId = useRef<string>(undefined)
   shownPatientId.current = patientId
 
@@ -28,6 +30,7 @@ export function App() {
     if (!patient) return
     setRecord(undefined)
     setPlanId(undefined)
+    loadGeneration.current += 1
     // Ignore the answer of a load that a newer patient selection has superseded.
     let current = true
     loadPatientRecord(patient)
@@ -39,15 +42,22 @@ export function App() {
   // Reload the record after a write, keeping the patient, and select a plan if given.
   async function refresh(selectPlanId?: string) {
     if (!record) return
-    const patientIdAtStart = record.patient.id
+    const generation = ++loadGeneration.current
     try {
       const loaded = await loadPatientRecord(record.patient)
-      if (shownPatientId.current !== patientIdAtStart) return
+      if (generation !== loadGeneration.current || shownPatientId.current !== record.patient.id) return
       setRecord(loaded)
       if (selectPlanId) setPlanId(selectPlanId)
     } catch (e) {
       setError((e as Error).message)
     }
+  }
+
+  // Show a created plan at once, so the next alternative gets the next letter even if the
+  // reload fails; the reload then brings the server's state.
+  async function addCreated(carePlan: CarePlan) {
+    setRecord((current) => current && current.patient.id === record?.patient.id ? { ...current, carePlans: [...current.carePlans, carePlan] } : current)
+    await refresh(carePlan.id)
   }
 
   async function choose(carePlanId: string) {
@@ -115,7 +125,7 @@ export function App() {
                 <PlanCard key={carePlan.id} carePlan={carePlan} record={record} selected={carePlan.id === planId} onSelect={() => setPlanId(carePlan.id)} onChoose={() => void choose(carePlan.id)} />
               ))}
             </div>
-            <PlanAlternativeForm record={record} onCreated={(carePlan) => refresh(carePlan.id)} />
+            <PlanAlternativeForm record={record} onCreated={addCreated} />
             </div>
           </section>
         </>
