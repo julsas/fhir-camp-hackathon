@@ -30,18 +30,17 @@ export function App() {
     if (!patient) return
     setRecord(undefined)
     setPlanId(undefined)
-    loadGeneration.current += 1
-    // Ignore the answer of a load that a newer patient selection has superseded.
-    let current = true
+    // Ignore the answer of a load that a newer load or patient selection has superseded.
+    const generation = ++loadGeneration.current
     loadPatientRecord(patient)
-      .then((loaded) => { if (current) setRecord(loaded) })
-      .catch((e: Error) => { if (current) setError(e.message) })
-    return () => { current = false }
+      .then((loaded) => { if (generation === loadGeneration.current) setRecord(loaded) })
+      .catch((e: Error) => { if (generation === loadGeneration.current) setError(e.message) })
   }, [patients, patientId])
 
   // Reload the record after a write, keeping the patient, and select a plan if given.
   async function refresh(selectPlanId?: string) {
-    if (!record) return
+    // A write for a patient no longer on screen must not reload or supersede anything.
+    if (!record || shownPatientId.current !== record.patient.id) return
     const generation = ++loadGeneration.current
     try {
       const loaded = await loadPatientRecord(record.patient)
