@@ -33,6 +33,7 @@ export interface ToothRecord {
   fillingSurfaces?: Surface[]
   fillingSurfaceMaterials?: Partial<Record<Surface, FillingMaterial>>
   endo?: 'none' | 'endo-filling'
+  prosthesis?: 'none' | 'removable-partial' | 'removable-full'
 }
 
 export type ChartTeeth = Record<string, ToothRecord>
@@ -142,4 +143,8 @@ const PLANNED_EFFECT: Record<string, (current: ToothRecord) => ToothRecord> = {
   '9010': () => ({ toothSelection: 'implant' }),
   // 2200 full crown (on the implant in the seeded plan)
   '2200': (current) => ({ restorationType: 'crown', restorationMaterial: 'metal-ceramic', toothSubstrate: current.toothSelection === 'implant' ? undefined : 'crownprep' }),
+  // 5200 partial denture with bent clasps, 5210 cast partial denture: the missing tooth is replaced
+  // by a removable denture tooth (the chart draws it only on an absent tooth position)
+  '5200': () => ({ toothSelection: 'none', prosthesis: 'removable-partial' }),
+  '5210': () => ({ toothSelection: 'none', prosthesis: 'removable-partial' }),
 }

@@ -14,3 +14,7 @@ h2 { font-size: 15px; margin: 8px 0; }
 .meta, .note { font-size: 12px; color: #52606d; }
 table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 6px; }
 th, td { text-align: left; padding: 2px 4px; border-bottom: 1px solid #eef1f4; }
+.chosen { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 600; color: #166534; }
+.choose { margin-top: 4px; font-size: 12px; }
+.new-plan { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #d9dee5; }
+.new-plan h3 { width: 100%; margin: 0; font-size: 14px; }

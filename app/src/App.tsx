@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { display, loadPatientRecord, patientName, search, toothOf, type CarePlan, type Patient, type PatientRecord } from './fhir'
+import { display, loadPatientRecord, patientName, search, toothOf, updateAll, type CarePlan, type Patient, type PatientRecord } from './fhir'
 import { toChartStatus, toPlanChart } from './odontogram/chartAdapter'
 import { OdontogramView } from './odontogram/OdontogramView'
+import { PlanAlternativeForm } from './PlanAlternativeForm'
+import { chooseAlternative, isChoosable } from './planAlternatives'
 
 const DENTAL_PATIENT = 'https://github.com/cognovis/fhir-camp-hackathon/sid/patient'
 
@@ -30,6 +32,29 @@ export function App() {
       .catch((e: Error) => { if (current) setError(e.message) })
     return () => { current = false }
   }, [patients, patientId])
+
+  // Reload the record after a write, keeping the patient, and select a plan if given.
+  async function refresh(selectPlanId?: string) {
+    if (!record) return
+    try {
+      const loaded = await loadPatientRecord(record.patient)
+      setRecord(loaded)
+      if (selectPlanId) setPlanId(selectPlanId)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  async function choose(carePlanId: string) {
+    if (!record) return
+    try {
+      setError(undefined)
+      await updateAll(chooseAlternative(record.carePlans, carePlanId))
+    } catch (e) {
+      setError((e as Error).message)
+    }
+    await refresh(carePlanId)
+  }
 
   const status = useMemo(() => (record ? toChartStatus(record.toothStates) : undefined), [record])
   const selectedPlan = record?.carePlans.find((p) => p.id === planId)
@@ -82,9 +107,10 @@ export function App() {
             </label>
             <div className="plans">
               {record.carePlans.map((carePlan) => (
-                <PlanCard key={carePlan.id} carePlan={carePlan} record={record} selected={carePlan.id === planId} onSelect={() => setPlanId(carePlan.id)} />
+                <PlanCard key={carePlan.id} carePlan={carePlan} record={record} selected={carePlan.id === planId} onSelect={() => setPlanId(carePlan.id)} onChoose={() => void choose(carePlan.id)} />
               ))}
             </div>
+            <PlanAlternativeForm record={record} onCreated={(carePlan) => void refresh(carePlan.id)} />
             </div>
           </section>
         </>
@@ -93,7 +119,7 @@ export function App() {
   )
 }
 
-function PlanCard({ carePlan, record, selected, onSelect }: { carePlan: CarePlan; record: PatientRecord; selected: boolean; onSelect: () => void }) {
+function PlanCard({ carePlan, record, selected, onSelect, onChoose }: { carePlan: CarePlan; record: PatientRecord; selected: boolean; onSelect: () => void; onChoose: () => void }) {
   const charges = record.chargeItems.filter((c) => c.supportingInformation?.some((r) => r.reference === `CarePlan/${carePlan.id}`))
   return (
     <div className={`plan-card${selected ? ' selected' : ''}`}>
@@ -105,6 +131,11 @@ function PlanCard({ carePlan, record, selected, onSelect }: { carePlan: CarePlan
         intent <code>{carePlan.intent}</code>, status <code>{carePlan.status}</code>, {carePlan.activity?.length ?? 0} activities
         {charges.length > 0 && <>, {charges.length} planned ChargeItems</>}
       </div>
+      {carePlan.intent === 'plan' ? (
+        <div className="chosen">Gewählt</div>
+      ) : isChoosable(carePlan) && (
+        <button type="button" className="choose" onClick={onChoose}>Diese Alternative wählen</button>
+      )}
       {selected && charges.length > 0 && (
         <table>
           <thead><tr><th>GOZ</th><th>Tooth</th><th>Qty</th><th>Factor</th><th>Service</th></tr></thead>
